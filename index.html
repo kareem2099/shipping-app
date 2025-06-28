@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipping Cost Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { max-width: 500px; margin-bottom: 20px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="text"], input[type="number"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        #response { margin-top: 20px; padding: 15px; border: 1px solid #eee; background-color: #f9f9f9; border-radius: 8px; white-space: pre-wrap; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Calculate Shipping Cost</h1>
+
+    <form id="shippingForm">
+        <label for="region">Region (e.g., PL for Poland):</label>
+        <input type="text" id="region" name="region" value="PL" required>
+
+        <label for="boxes">Number of Boxes:</label>
+        <input type="number" id="boxes" name="boxes" value="1" min="1" required>
+
+        <label for="postcode">Postcode:</label>
+        <input type="text" id="postcode" name="postcode" value="00-001" required>
+
+        <label for="address">Address:</label>
+        <input type="text" id="address" name="address" value="Testowa 1" required>
+
+        <button type="submit">Calculate Shipping</button>
+    </form>
+
+    <h2>Response:</h2>
+    <pre id="response"></pre>
+
+    <script>
+        document.getElementById('shippingForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const region = document.getElementById('region').value;
+            const boxes = parseInt(document.getElementById('boxes').value, 10);
+            const postcode = document.getElementById('postcode').value;
+            const address = document.getElementById('address').value;
+
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = 'Calculating...';
+            responseDiv.className = '';
+
+            try {
+                const response = await fetch('/api/calcShipping', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ region, boxes, postcode, address })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseDiv.textContent = JSON.stringify(data, null, 2);
+                    responseDiv.className = 'success';
+                } else {
+                    responseDiv.textContent = `Error: ${data.error || response.statusText}`;
+                    responseDiv.className = 'error';
+                }
+            } catch (error) {
+                responseDiv.textContent = `Network Error: ${error.message}`;
+                responseDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>
