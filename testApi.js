@@ -1,7 +1,7 @@
 import 'dotenv/config'; // Load environment variables from .env
 
 async function testShippingApi() {
-  const API_URL = 'http://localhost:3000/api/calcShipping';
+  const API_URL = 'https://shipping-app-two.vercel.app/api/calcShipping.js';
   const token = process.env.SHIPX_API_TOKEN;
   const organization_id = process.env.SHIPX_ORGANIZATION_ID;
 
@@ -12,7 +12,7 @@ async function testShippingApi() {
   }
 
   const samplePayload = {
-    region: "Polska", // Changed from "PL" to "Polska" based on UI
+    region: "PL",
     boxes: 1,
     postcode: "00-001",
     address: "Warsaw"
