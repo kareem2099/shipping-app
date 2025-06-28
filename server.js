@@ -1,7 +1,12 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const path = require('path');
-const dotenv = require('dotenv');
+import express from 'express';
+import bodyParser from 'body-parser';
+import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+
+// __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -16,7 +21,7 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
 
 // Import the calcShipping handler
-const calcShippingHandler = require('./api/calcShipping');
+import calcShippingHandler from './api/calcShipping.js';
 
 // API endpoint for calcShipping
 app.post('/api/calcShipping', async (req, res) => {

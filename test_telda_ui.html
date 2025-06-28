@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telda UI Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .t706__cart {
+            border: 1px solid #ccc;
+            padding: 20px;
+            max-width: 400px;
+            margin: 20px 0;
+        }
+        .product-item { margin-bottom: 10px; }
+        .t706__product-quantity { display: inline-block; width: 30px; text-align: center; border: 1px solid #ddd; }
+        .t706__price_total { margin-top: 20px; font-size: 1.2em; }
+        label { display: block; margin-top: 10px; }
+        input, select { width: calc(100% - 22px); padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        button { margin-top: 15px; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Telda UI Simulation for Shipping Cost</h1>
+
+    <div class="t706__cart">
+        <h2>Your Cart</h2>
+        <div class="product-item">
+            Product A: <span class="t706__product-quantity">1</span>
+            <button onclick="updateQuantity(this, 1)">+</button>
+            <button onclick="updateQuantity(this, -1)">-</button>
+        </div>
+        <div class="product-item">
+            Product B: <span class="t706__product-quantity">2</span>
+            <button onclick="updateQuantity(this, 1)">+</button>
+            <button onclick="updateQuantity(this, -1)">-</button>
+        </div>
+
+        <div class="t706__price_total">Suma: <span>100</span> PLN</div>
+
+        <div class="t706__window">
+            <h3>Shipping Details</h3>
+            <label for="region">Region:</label>
+            <select name="region" id="region-select">
+                <option value="PL">PL</option>
+                <option value="Polska">Polska</option>
+                <option value="DE">DE</option>
+            </select>
+
+            <label for="postcode">Postcode:</label>
+            <input type="text" name="postcode" value="00-001">
+
+            <label for="address">Address:</label>
+            <input type="text" name="address" value="Testowa 1">
+        </div>
+    </div>
+
+    <script>
+        function updateQuantity(button, change) {
+            const quantitySpan = button.parentNode.querySelector('.t706__product-quantity');
+            let currentQuantity = parseInt(quantitySpan.textContent, 10);
+            currentQuantity = Math.max(0, currentQuantity + change);
+            quantitySpan.textContent = currentQuantity;
+            // Trigger recalc manually for immediate update, as setInterval is 1s
+            if (typeof recalc === 'function') {
+                recalc();
+            }
+        }
+
+        // Add event listeners for input changes to trigger recalc more responsively
+        document.addEventListener('DOMContentLoaded', () => {
+            const regionSelect = document.getElementById('region-select');
+            const postcodeInput = document.querySelector('input[name="postcode"]');
+            const addressInput = document.querySelector('input[name="address"]');
+
+            if (regionSelect) regionSelect.addEventListener('change', recalc);
+            if (postcodeInput) postcodeInput.addEventListener('input', recalc);
+            if (addressInput) addressInput.addEventListener('input', recalc);
+        });
+    </script>
+
+    <!-- The Telda script will be injected here -->
+    <script>
+;(function(){
+  const PER_BOX = 1;  
+  const API_URL = 'https://shipping-app-two.vercel.app/api/calcShipping.js'; // Updated API URL to match testApi.js
+
+  // Mapping for country names to ISO 2-letter codes
+  // Add more mappings here if other country names are used in Telda UI
+  const countryCodeMap = {
+    "Polska": "PL",
+    // Example: "Germany": "DE",
+    // Example: "France": "FR",
+  };
+
+  async function recalc() {
+    const sumEl = document.querySelector('.t706__price_total span')
+               || document.querySelector('.t706__cartwin-totalamount-wrap')
+               || Array.from(document.querySelectorAll('div,p,span'))
+                       .find(el=>el.textContent.trim().startsWith('Suma'));
+    if (!sumEl) return;
+
+    let b = document.getElementById('boxes-info'),
+        c = document.getElementById('shipping-cost'),
+        t = document.getElementById('total-sum');
+    if (!b) {
+      b = document.createElement('div'); b.id='boxes-info'; b.style.margin='6px 0';
+      c = document.createElement('div'); c.id='shipping-cost'; c.style.margin='6px 0';
+      t = document.createElement('div'); t.id='total-sum'; t.style.margin='6px 0'; t.style.fontWeight='bold';
+      sumEl.insertAdjacentElement('afterend', b);
+      b.insertAdjacentElement( 'afterend', c);
+      c.insertAdjacentElement( 'afterend', t);
+    }
+
+    const items = Array.from(document.querySelectorAll('span.t706__product-quantity'))
+                   .reduce((s,el)=>s+(parseInt(el.textContent,10)||0),0);
+    const boxes = Math.ceil(items / PER_BOX);
+    b.textContent = `Liczba paczek: ${boxes}`;
+
+    const popup   = document.querySelector('.t706__window, .t706__cart');
+    const uiRegion  = popup?.querySelector('select[name="region"]')?.value.trim() || '';
+    const postcode= popup?.querySelector('input[name="postcode"]')?.value.replace(/\D/g,'') || '';
+    const address = popup?.querySelector('input[name="address"]')?.value.trim() || '';
+
+    // Convert UI region name to 2-letter ISO code if a mapping exists, otherwise use as is
+    // This matches the behavior of testApi.js which uses "PL" for Poland.
+    const region = countryCodeMap[uiRegion] || uiRegion;
+
+    let cost = 0;
+    if (region && postcode && address) {
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ region, boxes, postcode, address })
+        });
+        if (res.ok) {
+          const { shippingCost } = await res.json();
+          cost = shippingCost || 0;
+        } else {
+          const errorText = await res.text();
+          console.warn('calcShipping failed', `Status: ${res.status}, Error: ${errorText}`);
+        }
+      } catch(e){ console.error('Ошибка доставки:',e); }
+    }
+    c.textContent = `Koszt dostawy: ${cost} PLN`;
+
+    const prod = parseInt(sumEl.textContent.replace(/[^\d]/g,''),10)||0;
+    t.textContent = `Suma łącznie: ${prod + cost} zł`;
+  }
+
+  window.addEventListener('load', () => { recalc(); setInterval(recalc,1000); });
+})();
+    </script>
+</body>
+</html>
